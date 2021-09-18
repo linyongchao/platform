@@ -1,8 +1,15 @@
 package com.lin.platform.utils.codec;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 import java.util.Base64;
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -45,14 +52,67 @@ public class AesUtils {
         return decrypt(data, KEY_VI, SEED);
     }
 
+    /**
+     * 加密
+     *
+     * @param data 源
+     * @param vi 偏移量
+     * @param seed 密钥
+     */
     public static byte[] encrypt(byte[] data, String vi, String seed) throws GeneralSecurityException {
         Cipher cipher = createCipher(Cipher.ENCRYPT_MODE, vi, seed);
         return cipher.doFinal(data);
     }
 
+    /**
+     * 解密
+     *
+     * @param data 源
+     * @param vi 偏移量
+     * @param seed 密钥
+     */
     public static byte[] decrypt(byte[] data, String vi, String seed) throws GeneralSecurityException {
         Cipher cipher = createCipher(Cipher.DECRYPT_MODE, vi, seed);
         return cipher.doFinal(data);
+    }
+
+    /**
+     * 加密文件
+     *
+     * @param source 源文件
+     * @param target 目标文件
+     */
+    public static void encrypt(String source, String target) throws IOException, GeneralSecurityException {
+        Cipher cipher = createCipher(Cipher.ENCRYPT_MODE, KEY_VI, SEED);
+        try (FileInputStream in = new FileInputStream(source);
+            CipherInputStream cis = new CipherInputStream(in, cipher);
+            FileOutputStream out = new FileOutputStream(target)) {
+            copy(cis, out, 1024);
+        }
+    }
+
+    /**
+     * 解密文件
+     *
+     * @param source 源文件
+     * @param target 目标文件
+     */
+    public static void decrypt(String source, String target) throws IOException, GeneralSecurityException {
+        Cipher cipher = createCipher(Cipher.DECRYPT_MODE, KEY_VI, SEED);
+        try (FileInputStream in = new FileInputStream(source);
+            FileOutputStream out = new FileOutputStream(target);
+            CipherOutputStream cos = new CipherOutputStream(out, cipher)) {
+            copy(in, cos, 1024);
+        }
+    }
+
+    private static void copy(InputStream in, OutputStream out, int buffSize) throws IOException {
+        byte[] buff = new byte[buffSize];
+        int read = 0;
+        while ((read = in.read(buff)) != -1) {
+            out.write(buff, 0, read);
+        }
+        out.flush();
     }
 
     private static Cipher createCipher(int mode, String vi, String seed) throws GeneralSecurityException {
